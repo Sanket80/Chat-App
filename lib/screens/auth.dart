@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+final _firebase = FirebaseAuth.instance;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -8,19 +11,48 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-
   final _formKey = GlobalKey<FormState>();
 
   var _enteredEmail = '';
   var _enteredPassword = '';
   var _isLogin = true;
-  void _submit() {
+
+  void _submit() async {
     final isValid = _formKey.currentState!.validate();
     FocusScope.of(context).unfocus(); // close keyboard
-    if (isValid) {
-      _formKey.currentState!.save();
-      print(_enteredEmail);
-      print(_enteredPassword);
+
+    if (!isValid) {
+      return;
+    }
+    _formKey.currentState!.save();
+    try {
+      if (_isLogin) {
+        // Log user in
+        final userCredential = await _firebase.signInWithEmailAndPassword(
+          email: _enteredEmail,
+          password: _enteredPassword,
+        );
+      } else {
+        // Sign user up
+        final userCredential = await _firebase.createUserWithEmailAndPassword(
+          email: _enteredEmail,
+          password: _enteredPassword,
+        );
+      }
+    } on FirebaseAuthException catch (error) {
+      var message = 'An error occurred, please check your credentials!';
+
+      if (error.message != null) {
+        message = error.message!;
+      }
+
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
@@ -30,7 +62,7 @@ class _AuthScreenState extends State<AuthScreen> {
       backgroundColor: Theme.of(context).colorScheme.primary,
       body: Center(
         child: SingleChildScrollView(
-          child:Column(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
@@ -69,14 +101,16 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                             ),
                             validator: (value) {
-                              if (value!.isEmpty || !value.contains('@') || value.trim().isEmpty) {
+                              if (value!.isEmpty ||
+                                  !value.contains('@') ||
+                                  value.trim().isEmpty) {
                                 return 'Please enter a valid email address.';
                               }
                               return null;
                             },
                             onSaved: (value) {
-                                _enteredEmail = value!;
-                              },
+                              _enteredEmail = value!;
+                            },
                           ),
                           TextFormField(
                             obscureText: true,
@@ -98,8 +132,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               return null;
                             },
                             onSaved: (value) {
-                                _enteredPassword = value!;
-                              },
+                              _enteredPassword = value!;
+                            },
                           ),
                           const SizedBox(
                             height: 12,
@@ -128,9 +162,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 ? 'Create new account'
                                 : 'I already have an account'),
                             style: TextButton.styleFrom(
-                              primary: Theme.of(context)
-                                  .colorScheme
-                                  .secondary,
+                              primary: Theme.of(context).colorScheme.secondary,
                             ),
                           ),
                         ],
