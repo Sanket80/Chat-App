@@ -1,4 +1,6 @@
+import 'package:chat_app/widgets/message_bubble.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ChatMessages extends StatelessWidget {
@@ -6,6 +8,9 @@ class ChatMessages extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    final authenticatedUser = FirebaseAuth.instance.currentUser!;
+
     return StreamBuilder(
       stream: FirebaseFirestore.instance
           .collection('chat')
@@ -31,12 +36,33 @@ class ChatMessages extends StatelessWidget {
             right: 13,
           ),
           itemCount: chatDocs.length,
-          itemBuilder: (ctx, index) => Container(
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              chatDocs[index]['text'],
-            ),
-          ),
+          itemBuilder: (ctx, index) {
+            final chatDoc = chatDocs[index].data() as Map<String, dynamic>;
+            final nextChatDoc = index + 1 < chatDocs.length
+                ? chatDocs[index + 1].data() as Map<String, dynamic>?
+                : null;
+
+            final currentMessageUserId = chatDoc?['username'];
+            final nextMessageUserId = nextChatDoc != null
+                ? nextChatDoc['username']
+                : null;
+            final nextUserIsSame = currentMessageUserId == nextMessageUserId;
+
+            if(nextUserIsSame){
+              return MessageBubble.next(
+                message: chatDoc['text'],
+                isMe: authenticatedUser.uid == currentMessageUserId,
+              );
+            }
+            else{
+              return MessageBubble.first(
+                userImage: chatDoc['userImage'],
+                username: chatDoc['username'],
+                message: chatDoc['text'],
+                isMe: authenticatedUser.uid == currentMessageUserId,
+              );
+            }
+          }
         );
       },
     );
